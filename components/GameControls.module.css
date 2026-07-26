@@ -1,0 +1,28 @@
+.controls {
+  margin: 20px auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.button {
+  padding: 8px 18px;
+  font-size: 16px;
+  border: none;
+  background: #1976d2;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.button:hover {
+  background: #1565c0;
+}
+
+.message {
+  margin-left: 8px;
+  font-size: 16px;
+}
