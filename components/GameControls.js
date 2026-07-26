@@ -9,6 +9,8 @@ export default function GameControls({
   onNewGame,
   onCheckSolution,
   onHint,
+  notesMode,
+  onNotesToggle,
   isPaused,
   isGameOver,
   onPauseToggle,
@@ -39,6 +41,9 @@ export default function GameControls({
       </button>
       <button type="button" className={styles.button} onClick={onCheckSolution} disabled={isPaused || isGameOver}>
         Check Solution
+      </button>
+      <button type="button" className={styles.button} onClick={onNotesToggle} disabled={isPaused || isGameOver}>
+        Notes: {notesMode ? 'ON' : 'OFF'}
       </button>
       <button type="button" className={styles.button} onClick={onThemeToggle}>
         {theme === 'light' ? 'Dark Mode' : 'Light Mode'}

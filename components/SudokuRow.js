@@ -4,7 +4,7 @@ import SudokuCell from './SudokuCell';
 import styles from './SudokuBoard.module.css';
 
 // Renders one row of Sudoku cells while keeping the board layout focused on row composition.
-export default function SudokuRow({ row, rowIndex, prefilled, hinted, incorrectCells, conflictCells, onCellChange }) {
+export default function SudokuRow({ row, rowIndex, prefilled, hinted, notes, incorrectCells, conflictCells, onCellChange }) {
   return (
     <div className={styles.row}>
       {row.map((cellValue, colIndex) => {
@@ -20,6 +20,7 @@ export default function SudokuRow({ row, rowIndex, prefilled, hinted, incorrectC
             row={rowIndex}
             col={colIndex}
             value={cellValue}
+            notes={notes[rowIndex][colIndex]}
             isPrefilled={isPrefilled}
             isHinted={isHinted}
             isIncorrect={isIncorrect}

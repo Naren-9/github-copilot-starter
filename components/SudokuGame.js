@@ -68,6 +68,7 @@ const buildScoreEntry = (completionTime, difficulty) => {
 // Stateful container that owns the Sudoku board, difficulty, solution, hint state, and game feedback.
 export default function SudokuGame() {
   const createBooleanGrid = () => Array.from({ length: 9 }, () => Array(9).fill(false));
+  const createEmptyNotes = () => Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => []));
 
   const [board, setBoard] = useState(createEmptyBoard());
   const [solution, setSolution] = useState(createEmptyBoard());
@@ -84,6 +85,8 @@ export default function SudokuGame() {
   const [scores, setScores] = useState([]);
   const [scoreRecordedForCurrentPuzzle, setScoreRecordedForCurrentPuzzle] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [notesMode, setNotesMode] = useState(false);
+  const [notes, setNotes] = useState(createEmptyNotes());
   const [mistakes, setMistakes] = useState(0);
   const [isGameOver, setIsGameOver] = useState(false);
 
@@ -169,6 +172,72 @@ export default function SudokuGame() {
     return Array.from(conflictSet);
   };
 
+  const clearNotesForCell = (currentNotes, row, col) => {
+    const nextNotes = currentNotes.map((rowValues) => rowValues.map((noteValues) => noteValues.slice()));
+    nextNotes[row][col] = [];
+    return nextNotes;
+  };
+
+  const removeNoteFromPeers = (currentNotes, candidate, row, col) => {
+    const nextNotes = currentNotes.map((rowValues) => rowValues.map((noteValues) => noteValues.slice()));
+
+    for (let c = 0; c < 9; c += 1) {
+      if (c !== col) {
+        nextNotes[row][c] = nextNotes[row][c].filter((value) => value !== candidate);
+      }
+    }
+
+    for (let r = 0; r < 9; r += 1) {
+      if (r !== row) {
+        nextNotes[r][col] = nextNotes[r][col].filter((value) => value !== candidate);
+      }
+    }
+
+    const boxRowStart = Math.floor(row / 3) * 3;
+    const boxColStart = Math.floor(col / 3) * 3;
+
+    for (let r = boxRowStart; r < boxRowStart + 3; r += 1) {
+      for (let c = boxColStart; c < boxColStart + 3; c += 1) {
+        if (r !== row || c !== col) {
+          nextNotes[r][c] = nextNotes[r][c].filter((value) => value !== candidate);
+        }
+      }
+    }
+
+    return nextNotes;
+  };
+
+  const updateNotesForCell = (currentNotes, row, col, candidate) => {
+    const nextNotes = currentNotes.map((rowValues) => rowValues.map((noteValues) => noteValues.slice()));
+    const existingNotes = nextNotes[row][col];
+    const hasCandidate = existingNotes.includes(candidate);
+
+    if (hasCandidate) {
+      nextNotes[row][col] = existingNotes.filter((value) => value !== candidate);
+    } else {
+      nextNotes[row][col] = [...existingNotes, candidate].sort((a, b) => a - b);
+    }
+
+    return nextNotes;
+  };
+
+  const clearNotesForValuePlacement = (currentNotes, candidate, row, col) => {
+    let nextNotes = clearNotesForCell(currentNotes, row, col);
+    nextNotes = removeNoteFromPeers(nextNotes, candidate, row, col);
+    return nextNotes;
+  };
+
+  const toggleNoteForCell = (currentNotes, row, col, candidate) => {
+    const nextNotes = currentNotes.map((rowValues) => rowValues.map((noteValues) => noteValues.slice()));
+    const existingNotes = nextNotes[row][col];
+    if (existingNotes.includes(candidate)) {
+      nextNotes[row][col] = existingNotes.filter((value) => value !== candidate);
+    } else {
+      nextNotes[row][col] = [...existingNotes, candidate].sort((a, b) => a - b);
+    }
+    return nextNotes;
+  };
+
   const initializeGame = (selectedDifficulty = difficulty) => {
     const { puzzle, solution: solvedBoard, prefilled: prefilledCells } = generatePuzzle(selectedDifficulty);
     setBoard(deepCopy(puzzle));
@@ -177,6 +246,8 @@ export default function SudokuGame() {
     setHinted(createBooleanGrid());
     setConflictCells([]);
     setIncorrectCells([]);
+    setNotes(createEmptyNotes());
+    setNotesMode(false);
     setElapsedSeconds(0);
     setIsTimerRunning(true);
     setIsPaused(false);
@@ -199,6 +270,8 @@ export default function SudokuGame() {
       setHinted(createBooleanGrid());
       setConflictCells([]);
       setIncorrectCells([]);
+      setNotes(createEmptyNotes());
+      setNotesMode(false);
       setElapsedSeconds(0);
       setIsTimerRunning(true);
       setIsPaused(false);
@@ -230,6 +303,11 @@ export default function SudokuGame() {
     return () => clearInterval(intervalId);
   }, [isTimerRunning]);
 
+  const handleNotesToggle = () => {
+    setNotesMode((current) => !current);
+    setMessage('');
+  };
+
   const handlePauseToggle = () => {
     if (isGameOver || scoreRecordedForCurrentPuzzle) {
       return;
@@ -246,6 +324,17 @@ export default function SudokuGame() {
 
   const handleCellChange = (row, col, value) => {
     if (isPaused || isGameOver || scoreRecordedForCurrentPuzzle) {
+      return;
+    }
+
+    if (notesMode && !isReadOnlyCell(row, col, prefilled, hinted) && board[row][col] === EMPTY) {
+      const candidate = Number(value.replace(/[^1-9]/g, '').slice(0, 1));
+      if (!candidate) {
+        return;
+      }
+
+      setNotes((currentNotes) => toggleNoteForCell(currentNotes, row, col, candidate));
+      setMessage('');
       return;
     }
 
@@ -275,6 +364,10 @@ export default function SudokuGame() {
       }
     } else {
       setMessage('');
+    }
+
+    if (nextValue !== EMPTY) {
+      setNotes((currentNotes) => clearNotesForValuePlacement(currentNotes, nextValue, row, col));
     }
 
     setBoard(nextBoard);
@@ -374,6 +467,7 @@ export default function SudokuGame() {
         board={board}
         prefilled={prefilled}
         hinted={hinted}
+        notes={notes}
         incorrectCells={incorrectCells}
         conflictCells={conflictCells}
         isPaused={isPaused}
@@ -386,6 +480,8 @@ export default function SudokuGame() {
         onNewGame={() => initializeGame(difficulty)}
         onCheckSolution={checkSolution}
         onHint={handleHint}
+        notesMode={notesMode}
+        onNotesToggle={handleNotesToggle}
         isPaused={isPaused}
         isGameOver={isGameOver}
         onPauseToggle={handlePauseToggle}
