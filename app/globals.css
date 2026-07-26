@@ -3,13 +3,20 @@ body {
   padding: 0;
   margin: 0;
   font-family: Arial, sans-serif;
-  background: #f4f4f4;
-  color: #111;
+  background: var(--background, #f4f4f4);
+  color: var(--text-primary, #111);
 }
 
 body.dark-theme {
-  background: #121212;
-  color: #f5f5f5;
+  --background: #0f1720;
+  --surface: #111827;
+  --surface-secondary: #111421;
+  --text-primary: #f5f5f5;
+  --text-secondary: #cbd5e1;
+  --border: #263047;
+  --accent: #3b82f6;
+  --danger: #ef4444;
+  --success: #10b981;
 }
 
 * {
@@ -40,4 +47,45 @@ body.dark-theme h1 {
 
 button {
   font-family: inherit;
+}
+
+/* Design system variables */
+:root {
+  --background: #f4f6f8;
+  --surface: #ffffff;
+  --surface-secondary: #f7f9fb;
+  --text-primary: #0f1720;
+  --text-secondary: #475569;
+  --border: #e6eef6;
+  --accent: #2563eb;
+  --danger: #dc2626;
+  --success: #16a34a;
+
+  --radius: 10px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --shadow-sm: 0 2px 6px rgba(16,24,40,0.06);
+  --shadow-md: 0 6px 20px rgba(16,24,40,0.08);
+}
+
+/* App container */
+.appContainer {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+@media (max-width: 768px) {
+  .appContainer {
+    padding: 18px;
+  }
+}
+
+.centeredCard {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: var(--spacing-md);
 }

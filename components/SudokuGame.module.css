@@ -1,0 +1,110 @@
+.root {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.topArea {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gameGrid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 580px) 320px;
+  justify-content: center;
+  align-items: start;
+  gap: 22px;
+}
+
+@media (max-width: 900px) {
+  .gameGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.boardCard {
+  width: 100%;
+  min-width: 0;
+  background: var(--surface);
+  padding: 20px;
+  border-radius: 14px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  box-shadow: var(--shadow-sm);
+}
+
+.controlsCard {
+  width: 100%;
+  min-width: 0;
+  background: var(--surface);
+  padding: 20px;
+  border-radius: 14px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.bottomRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.scoreboardWrapper {
+  margin-top: 12px;
+}
+/* Tablet */
+@media (max-width: 950px) {
+  .gameGrid {
+    grid-template-columns: minmax(0, 580px);
+    justify-content: center;
+  }
+
+  .controlsCard {
+    width: 100%;
+  }
+
+  .scoreboardWrapper {
+    max-width: 580px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .root {
+    gap: 12px;
+  }
+
+  .gameGrid {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .boardCard {
+    padding: 10px;
+    border-radius: 10px;
+  }
+
+  .controlsCard {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .scoreboardWrapper {
+    max-width: 100%;
+  }
+}

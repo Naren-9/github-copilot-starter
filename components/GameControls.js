@@ -59,9 +59,6 @@ export default function GameControls({
       <button type="button" className={styles.button} onClick={onNotesToggle} disabled={isPaused || isGameOver}>
         Notes: {notesMode ? 'ON' : 'OFF'}
       </button>
-      <button type="button" className={styles.button} onClick={onThemeToggle}>
-        {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
-      </button>
       <button type="button" className={styles.button} onClick={onPauseToggle} disabled={isGameOver}>
         {isPaused ? 'Resume' : 'Pause'}
       </button>

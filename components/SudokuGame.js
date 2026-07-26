@@ -5,6 +5,10 @@ import SudokuBoard from './SudokuBoard';
 import GameControls from './GameControls';
 import Timer from './Timer';
 import Scoreboard from './Scoreboard';
+import GameHeader from './GameHeader';
+import GameStats from './GameStats';
+import NumberPad from './NumberPad';
+import styles from './SudokuGame.module.css';
 import ConfirmationModal from './ConfirmationModal';
 import { createEmptyBoard, generatePuzzle, deepCopy, EMPTY } from '../lib/sudoku.mjs';
 
@@ -497,6 +501,13 @@ export default function SudokuGame() {
     }
   };
 
+  const handleNumberPadInput = (n) => {
+    if (isPaused || isGameOver || scoreRecordedForCurrentPuzzle) return;
+    if (!selectedCell) return;
+    handleCellChange(selectedCell.row, selectedCell.col, String(n));
+    if (boardRef.current) boardRef.current.focus();
+  };
+
   const initializeGame = (selectedDifficulty = difficulty) => {
     const { puzzle, solution: solvedBoard, prefilled: prefilledCells } = generatePuzzle(selectedDifficulty);
     setBoard(deepCopy(puzzle));
@@ -958,65 +969,87 @@ export default function SudokuGame() {
   };
 
   return (
-    <div>
-      <Timer
-        elapsedSeconds={elapsedSeconds}
-        isPaused={isPaused}
-        mistakes={mistakes}
-        maxMistakes={MAX_MISTAKES}
-      />
-      <SudokuBoard
-        board={board}
-        prefilled={prefilled}
-        hinted={hinted}
-        notes={notes}
-        incorrectCells={incorrectCells}
-        conflictCells={conflictCells}
-        selectedCell={selectedCell}
-        onCellSelect={handleCellSelect}
-        isRelatedCell={isRelatedCell}
-        isSameNumberCell={isSameNumberCell}
-        boardRef={boardRef}
-        onBoardKeyDown={handleBoardKeyDown}
-        isPaused={isPaused}
-        isGameOver={isGameOver}
-        onCellChange={handleCellChange}
-      />
-      <GameControls
-        selectedDifficulty={difficulty}
-        onDifficultyChange={handleDifficultyChange}
-        onNewGame={handleNewGameClick}
-        onRestart={handleRestartClick}
-        onCheckSolution={checkSolution}
-        onHint={handleHint}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
-        canUndo={undoHistory.length > 0}
-        canRedo={redoHistory.length > 0}
-        notesMode={notesMode}
-        onNotesToggle={handleNotesToggle}
-        isPaused={isPaused}
-        isGameOver={isGameOver}
-        onPauseToggle={handlePauseToggle}
-        theme={theme}
-        onThemeToggle={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
-        message={message}
-        messageColor={messageColor}
-      />
-      <ConfirmationModal
-        open={Boolean(confirmModal && confirmModal.open)}
-        title={confirmModal?.type === 'restart' ? 'Restart Puzzle' : 'Start New Game'}
-        message={
-          confirmModal?.type === 'restart'
-            ? 'Restart this puzzle? Your current progress will be lost.'
-            : 'Start a new game? Your current progress will be lost.'
-        }
-        confirmLabel={confirmModal?.type === 'restart' ? 'Restart' : 'New Game'}
-        cancelLabel="Cancel"
-        onConfirm={handleConfirmProceed}
-        onCancel={handleConfirmCancel}
-      />
-      <Scoreboard scores={scores} />
+    <div className={styles.root}>
+      <div className="appContainer">
+        <GameHeader theme={theme} onThemeToggle={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))} />
+
+        <div className={styles.topArea}>
+          <GameStats difficulty={difficulty} elapsedSeconds={elapsedSeconds} mistakes={mistakes} maxMistakes={MAX_MISTAKES} />
+        </div>
+
+        <div className={styles.gameGrid}>
+  <div className={styles.boardCard}>
+    <SudokuBoard
+      board={board}
+      prefilled={prefilled}
+      hinted={hinted}
+      notes={notes}
+      incorrectCells={incorrectCells}
+      conflictCells={conflictCells}
+      selectedCell={selectedCell}
+      onCellSelect={handleCellSelect}
+      isRelatedCell={isRelatedCell}
+      isSameNumberCell={isSameNumberCell}
+      boardRef={boardRef}
+      onBoardKeyDown={handleBoardKeyDown}
+      isPaused={isPaused}
+      isGameOver={isGameOver}
+      onCellChange={handleCellChange}
+    />
+  </div>
+
+  <aside className={styles.controlsCard}>
+    <GameControls
+      selectedDifficulty={difficulty}
+      onDifficultyChange={handleDifficultyChange}
+      onNewGame={handleNewGameClick}
+      onRestart={handleRestartClick}
+      onCheckSolution={checkSolution}
+      onHint={handleHint}
+      onUndo={handleUndo}
+      onRedo={handleRedo}
+      canUndo={undoHistory.length > 0}
+      canRedo={redoHistory.length > 0}
+      notesMode={notesMode}
+      onNotesToggle={handleNotesToggle}
+      isPaused={isPaused}
+      isGameOver={isGameOver}
+      onPauseToggle={handlePauseToggle}
+      theme={theme}
+      onThemeToggle={() =>
+        setTheme((current) =>
+          current === 'light' ? 'dark' : 'light'
+        )
+      }
+      message={message}
+      messageColor={messageColor}
+    />
+
+    <NumberPad
+      onNumber={handleNumberPadInput}
+      disabled={isPaused || isGameOver}
+    />
+  </aside>
+</div>
+
+        <div className={styles.scoreboardWrapper}>
+          <Scoreboard scores={scores} />
+        </div>
+
+        <ConfirmationModal
+          open={Boolean(confirmModal && confirmModal.open)}
+          title={confirmModal?.type === 'restart' ? 'Restart Puzzle' : 'Start New Game'}
+          message={
+            confirmModal?.type === 'restart'
+              ? 'Restart this puzzle? Your current progress will be lost.'
+              : 'Start a new game? Your current progress will be lost.'
+          }
+          confirmLabel={confirmModal?.type === 'restart' ? 'Restart' : 'New Game'}
+          cancelLabel="Cancel"
+          onConfirm={handleConfirmProceed}
+          onCancel={handleConfirmCancel}
+        />
+      </div>
     </div>
   );
 }

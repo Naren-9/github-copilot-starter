@@ -1,0 +1,29 @@
+.pad {
+  display: grid;
+  grid-template-columns: repeat(3, 56px);
+  gap: 8px;
+  justify-content: center;
+  margin-top: 0;
+}
+
+.key {
+  height: 56px;
+  width: 56px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.key:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+:global(body.dark-theme) .key {
+  background: #0d1723;
+  border-color: #263447;
+  color: var(--text-primary);
+}

@@ -1,0 +1,22 @@
+.stats {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.pill {
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+}
+
+:global(body.dark-theme) .pill {
+  background: #0b1220;
+  color: var(--text-primary);
+  border-color: #243240;
+}
