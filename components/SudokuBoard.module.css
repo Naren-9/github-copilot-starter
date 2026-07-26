@@ -34,6 +34,11 @@
   background: #ffcdd2;
 }
 
+.hinted {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
 .conflict {
   background: #ffebee;
   border: 2px solid #d32f2f;

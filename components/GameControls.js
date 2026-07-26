@@ -8,6 +8,7 @@ export default function GameControls({
   onDifficultyChange,
   onNewGame,
   onCheckSolution,
+  onHint,
   message,
   messageColor,
 }) {
@@ -27,6 +28,9 @@ export default function GameControls({
       </label>
       <button type="button" className={styles.button} onClick={onNewGame}>
         New Game
+      </button>
+      <button type="button" className={styles.button} onClick={onHint}>
+        Hint
       </button>
       <button type="button" className={styles.button} onClick={onCheckSolution}>
         Check Solution

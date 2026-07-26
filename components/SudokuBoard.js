@@ -4,7 +4,7 @@ import SudokuRow from './SudokuRow';
 import styles from './SudokuBoard.module.css';
 
 // Presentational component that renders the full 9x9 board from smaller row components.
-export default function SudokuBoard({ board, prefilled, incorrectCells, conflictCells, onCellChange }) {
+export default function SudokuBoard({ board, prefilled, hinted, incorrectCells, conflictCells, onCellChange }) {
   return (
     <div className={styles.board}>
       {board.map((row, rowIndex) => (
@@ -13,6 +13,7 @@ export default function SudokuBoard({ board, prefilled, incorrectCells, conflict
           row={row}
           rowIndex={rowIndex}
           prefilled={prefilled}
+          hinted={hinted}
           incorrectCells={incorrectCells}
           conflictCells={conflictCells}
           onCellChange={onCellChange}

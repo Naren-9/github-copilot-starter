@@ -3,9 +3,10 @@
 import styles from './SudokuBoard.module.css';
 
 // A single interactive Sudoku cell with styling that reflects whether it is prefilled, incorrect, or in conflict.
-export default function SudokuCell({ row, col, value, isPrefilled, isIncorrect, isConflict, onCellChange }) {
+export default function SudokuCell({ row, col, value, isPrefilled, isHinted, isIncorrect, isConflict, onCellChange }) {
   const classNames = [styles.cell];
   if (isPrefilled) classNames.push(styles.prefilled);
+  if (isHinted) classNames.push(styles.hinted);
   if (isIncorrect) classNames.push(styles.incorrect);
   if (isConflict) classNames.push(styles.conflict);
 
@@ -16,7 +17,7 @@ export default function SudokuCell({ row, col, value, isPrefilled, isIncorrect, 
       pattern="[1-9]"
       maxLength={1}
       value={value === 0 ? '' : value}
-      disabled={isPrefilled}
+      disabled={isPrefilled || isHinted}
       className={classNames.join(' ')}
       onChange={(event) => onCellChange(row, col, event.target.value)}
     />

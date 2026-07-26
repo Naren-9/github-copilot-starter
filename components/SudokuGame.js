@@ -7,24 +7,29 @@ import { createEmptyBoard, generatePuzzle, deepCopy, EMPTY } from '../lib/sudoku
 
 const DEFAULT_DIFFICULTY = 'medium';
 
-// Stateful container that owns the Sudoku board, difficulty, solution, and game feedback.
+// Stateful container that owns the Sudoku board, difficulty, solution, hint state, and game feedback.
 export default function SudokuGame() {
+  const createBooleanGrid = () => Array.from({ length: 9 }, () => Array(9).fill(false));
+
   const [board, setBoard] = useState(createEmptyBoard());
   const [solution, setSolution] = useState(createEmptyBoard());
   const [prefilled, setPrefilled] = useState(createEmptyBoard());
+  const [hinted, setHinted] = useState(createBooleanGrid());
   const [incorrectCells, setIncorrectCells] = useState([]);
   const [conflictCells, setConflictCells] = useState([]);
   const [message, setMessage] = useState('');
   const [messageColor, setMessageColor] = useState('#d32f2f');
   const [difficulty, setDifficulty] = useState(DEFAULT_DIFFICULTY);
 
+  const isReadOnlyCell = (row, col, prefilledGrid, hintedGrid) => prefilledGrid[row][col] || hintedGrid[row][col];
+
   // Determine which user-entered cells conflict in row, column, or 3x3 box.
-  // Prefilled cells are never marked as user errors even if they are part of a duplicate.
-  const findConflictCells = (boardToCheck, prefilledGrid) => {
+  // Prefilled and hinted cells are excluded from conflict styling.
+  const findConflictCells = (boardToCheck, prefilledGrid, hintedGrid) => {
     const conflictSet = new Set();
 
     const markConflict = (row, col) => {
-      if (!prefilledGrid[row][col]) {
+      if (!isReadOnlyCell(row, col, prefilledGrid, hintedGrid)) {
         conflictSet.add(`${row}-${col}`);
       }
     };
@@ -40,7 +45,6 @@ export default function SudokuGame() {
       });
     };
 
-    // Row conflict detection.
     for (let row = 0; row < boardToCheck.length; row += 1) {
       const rowValues = {};
       for (let col = 0; col < boardToCheck[row].length; col += 1) {
@@ -56,7 +60,6 @@ export default function SudokuGame() {
       Object.values(rowValues).forEach((positions) => addDuplicates(positions, row, true));
     }
 
-    // Column conflict detection.
     for (let col = 0; col < boardToCheck[0].length; col += 1) {
       const colValues = {};
       for (let row = 0; row < boardToCheck.length; row += 1) {
@@ -72,7 +75,6 @@ export default function SudokuGame() {
       Object.values(colValues).forEach((positions) => addDuplicates(positions, col, false));
     }
 
-    // Box conflict detection.
     for (let boxRow = 0; boxRow < 3; boxRow += 1) {
       for (let boxCol = 0; boxCol < 3; boxCol += 1) {
         const boxValues = {};
@@ -106,6 +108,7 @@ export default function SudokuGame() {
     setBoard(deepCopy(puzzle));
     setSolution(deepCopy(solvedBoard));
     setPrefilled(prefilledCells);
+    setHinted(createBooleanGrid());
     setConflictCells([]);
     setIncorrectCells([]);
     setMessage('');
@@ -118,6 +121,7 @@ export default function SudokuGame() {
       setBoard(deepCopy(puzzle));
       setSolution(deepCopy(solvedBoard));
       setPrefilled(prefilledCells);
+      setHinted(createBooleanGrid());
       setConflictCells([]);
       setIncorrectCells([]);
       setMessage('');
@@ -133,9 +137,42 @@ export default function SudokuGame() {
     const nextBoard = deepCopy(board);
     nextBoard[row][col] = cleaned ? Number(cleaned) : EMPTY;
     setBoard(nextBoard);
-    setConflictCells(findConflictCells(nextBoard, prefilled));
+    setConflictCells(findConflictCells(nextBoard, prefilled, hinted));
     setIncorrectCells([]);
     setMessage('');
+  };
+
+  const handleHint = () => {
+    const emptyCells = [];
+
+    for (let row = 0; row < board.length; row += 1) {
+      for (let col = 0; col < board[row].length; col += 1) {
+        if (board[row][col] === EMPTY && !prefilled[row][col] && !hinted[row][col]) {
+          emptyCells.push({ row, col });
+        }
+      }
+    }
+
+    if (emptyCells.length === 0) {
+      setMessageColor('#d32f2f');
+      setMessage('No empty cells remain for a hint.');
+      return;
+    }
+
+    const randomIndex = Math.floor(Math.random() * emptyCells.length);
+    const { row, col } = emptyCells[randomIndex];
+    const nextBoard = deepCopy(board);
+    nextBoard[row][col] = solution[row][col];
+
+    const nextHinted = hinted.map((rowValues) => rowValues.slice());
+    nextHinted[row][col] = true;
+
+    setBoard(nextBoard);
+    setHinted(nextHinted);
+    setConflictCells(findConflictCells(nextBoard, prefilled, nextHinted));
+    setIncorrectCells([]);
+    setMessageColor('#388e3c');
+    setMessage('A hint has been added.');
   };
 
   const handleDifficultyChange = (selectedDifficulty) => {
@@ -173,6 +210,7 @@ export default function SudokuGame() {
       <SudokuBoard
         board={board}
         prefilled={prefilled}
+        hinted={hinted}
         incorrectCells={incorrectCells}
         conflictCells={conflictCells}
         onCellChange={handleCellChange}
@@ -182,6 +220,7 @@ export default function SudokuGame() {
         onDifficultyChange={handleDifficultyChange}
         onNewGame={() => initializeGame(difficulty)}
         onCheckSolution={checkSolution}
+        onHint={handleHint}
         message={message}
         messageColor={messageColor}
       />
