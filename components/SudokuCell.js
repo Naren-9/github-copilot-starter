@@ -2,11 +2,12 @@
 
 import styles from './SudokuBoard.module.css';
 
-// A single interactive Sudoku cell with styling that reflects whether it is prefilled or incorrect.
-export default function SudokuCell({ row, col, value, isPrefilled, isIncorrect, onCellChange }) {
+// A single interactive Sudoku cell with styling that reflects whether it is prefilled, incorrect, or in conflict.
+export default function SudokuCell({ row, col, value, isPrefilled, isIncorrect, isConflict, onCellChange }) {
   const classNames = [styles.cell];
   if (isPrefilled) classNames.push(styles.prefilled);
   if (isIncorrect) classNames.push(styles.incorrect);
+  if (isConflict) classNames.push(styles.conflict);
 
   return (
     <input
