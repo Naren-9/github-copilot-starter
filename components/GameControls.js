@@ -7,6 +7,7 @@ export default function GameControls({
   selectedDifficulty,
   onDifficultyChange,
   onNewGame,
+  onRestart,
   onCheckSolution,
   onHint,
   onUndo,
@@ -39,6 +40,9 @@ export default function GameControls({
       </label>
       <button type="button" className={styles.button} onClick={onNewGame}>
         New Game
+      </button>
+      <button type="button" className={styles.button} onClick={onRestart}>
+        Restart
       </button>
       <button type="button" className={styles.button} onClick={onUndo} disabled={!canUndo || isPaused || isGameOver}>
         Undo

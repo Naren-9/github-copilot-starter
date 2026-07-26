@@ -5,6 +5,7 @@ import SudokuBoard from './SudokuBoard';
 import GameControls from './GameControls';
 import Timer from './Timer';
 import Scoreboard from './Scoreboard';
+import ConfirmationModal from './ConfirmationModal';
 import { createEmptyBoard, generatePuzzle, deepCopy, EMPTY } from '../lib/sudoku.mjs';
 
 const DEFAULT_DIFFICULTY = 'medium';
@@ -181,6 +182,9 @@ export default function SudokuGame() {
   const [selectedCell, setSelectedCell] = useState(null);
   const boardRef = useRef(null);
   const saveTimeoutRef = useRef(null);
+  const [originalPuzzle, setOriginalPuzzle] = useState(createEmptyBoard());
+  const [confirmModal, setConfirmModal] = useState(null); // { type: 'restart'|'newGame', open: true }
+  const prevPauseRef = useRef({ wasPaused: false, wasRunning: false });
 
   const buildActiveGamePayload = () => ({
     board,
@@ -188,6 +192,7 @@ export default function SudokuGame() {
     prefilled,
     hinted,
     notes,
+    originalPuzzle,
     difficulty,
     elapsedSeconds,
     mistakes,
@@ -411,6 +416,37 @@ export default function SudokuGame() {
     }
   };
 
+  const hasMeaningfulProgress = () => {
+    // Check user-entered values differ from original puzzle
+    for (let r = 0; r < 9; r += 1) {
+      for (let c = 0; c < 9; c += 1) {
+        if (board[r][c] !== (originalPuzzle[r][c] || 0)) {
+          // If it's a user-entered value (original was empty) or changed prefilled (shouldn't happen)
+          if (board[r][c] !== originalPuzzle[r][c]) return true;
+        }
+      }
+    }
+
+    // Check notes
+    for (let r = 0; r < 9; r += 1) {
+      for (let c = 0; c < 9; c += 1) {
+        if (notes[r][c] && notes[r][c].length > 0) return true;
+      }
+    }
+
+    // Check hints
+    for (let r = 0; r < 9; r += 1) {
+      for (let c = 0; c < 9; c += 1) {
+        if (hinted[r][c]) return true;
+      }
+    }
+
+    // Mistakes
+    if (mistakes > 0) return true;
+
+    return false;
+  };
+
   const moveSelectedCell = (deltaRow, deltaCol) => {
     if (!selectedCell) {
       return;
@@ -422,7 +458,7 @@ export default function SudokuGame() {
   };
 
   const handleBoardKeyDown = (event) => {
-    if (!selectedCell || isPaused || isGameOver || scoreRecordedForCurrentPuzzle) {
+    if (!selectedCell || isPaused || isGameOver || scoreRecordedForCurrentPuzzle || (confirmModal && confirmModal.open)) {
       return;
     }
 
@@ -464,6 +500,7 @@ export default function SudokuGame() {
   const initializeGame = (selectedDifficulty = difficulty) => {
     const { puzzle, solution: solvedBoard, prefilled: prefilledCells } = generatePuzzle(selectedDifficulty);
     setBoard(deepCopy(puzzle));
+    setOriginalPuzzle(deepCopy(puzzle));
     setSolution(deepCopy(solvedBoard));
     setPrefilled(prefilledCells);
     setHinted(createBooleanGrid());
@@ -499,6 +536,7 @@ export default function SudokuGame() {
         notesMode: false,
         isPaused: false,
         selectedCell: null,
+        originalPuzzle: deepCopy(puzzle),
       });
     } catch (err) {
       // ignore storage errors
@@ -527,6 +565,7 @@ export default function SudokuGame() {
       setIsPaused(Boolean(saved.isPaused));
       setIsTimerRunning(!saved.isPaused);
       setSelectedCell(saved.selectedCell || null);
+      setOriginalPuzzle(saved.originalPuzzle || saved.board || createEmptyBoard());
       setConflictCells(findConflictCells(saved.board, saved.prefilled, saved.hinted));
       setIncorrectCells([]);
       setMessage('');
@@ -778,6 +817,105 @@ export default function SudokuGame() {
     setDifficulty(selectedDifficulty);
   };
 
+  const performRestart = () => {
+    // Reset board to original puzzle values and clear transient gameplay state
+    setBoard(deepCopy(originalPuzzle));
+    setNotes(createEmptyNotes());
+    setHinted(createBooleanGrid());
+    setMistakes(0);
+    setElapsedSeconds(0);
+    setIsTimerRunning(true);
+    setIsPaused(false);
+    setUndoHistory([]);
+    setRedoHistory([]);
+    setNotesMode(false);
+    setSelectedCell(null);
+    setConflictCells([]);
+    setIncorrectCells([]);
+    setMessage('');
+    setMessageColor('#d32f2f');
+    setIsGameOver(false);
+    setScoreRecordedForCurrentPuzzle(false);
+
+    // Persist restarted state
+    try {
+      saveActiveGameToStorage({
+        board: deepCopy(originalPuzzle),
+        solution,
+        prefilled,
+        hinted: createBooleanGrid(),
+        notes: createEmptyNotes(),
+        originalPuzzle,
+        difficulty,
+        elapsedSeconds: 0,
+        mistakes: 0,
+        undoHistory: [],
+        redoHistory: [],
+        notesMode: false,
+        isPaused: false,
+        selectedCell: null,
+      });
+    } catch (err) {
+      // ignore
+    }
+  };
+
+  const handleRestartClick = () => {
+    if (isGameOver || scoreRecordedForCurrentPuzzle) {
+      // allow restart without confirmation in terminal states
+      performRestart();
+      return;
+    }
+
+    if (!hasMeaningfulProgress()) {
+      performRestart();
+      return;
+    }
+
+    // show confirmation modal and pause
+    prevPauseRef.current = { wasPaused: isPaused, wasRunning: isTimerRunning };
+    setIsPaused(true);
+    setIsTimerRunning(false);
+    setConfirmModal({ type: 'restart', open: true });
+  };
+
+  const handleNewGameClick = () => {
+    if (isGameOver || scoreRecordedForCurrentPuzzle) {
+      // allow immediate new game after completion or game over
+      initializeGame(difficulty);
+      return;
+    }
+
+    if (!hasMeaningfulProgress()) {
+      initializeGame(difficulty);
+      return;
+    }
+
+    prevPauseRef.current = { wasPaused: isPaused, wasRunning: isTimerRunning };
+    setIsPaused(true);
+    setIsTimerRunning(false);
+    setConfirmModal({ type: 'newGame', open: true });
+  };
+
+  const handleConfirmCancel = () => {
+    // restore previous paused/running state
+    setConfirmModal(null);
+    const { wasPaused, wasRunning } = prevPauseRef.current || { wasPaused: false, wasRunning: false };
+    setIsPaused(wasPaused);
+    setIsTimerRunning(wasRunning);
+  };
+
+  const handleConfirmProceed = () => {
+    if (!confirmModal) return;
+    const { type } = confirmModal;
+    setConfirmModal(null);
+    if (type === 'restart') {
+      performRestart();
+    } else if (type === 'newGame') {
+      initializeGame(difficulty);
+    }
+  };
+
   const checkSolution = () => {
     if (isPaused || isGameOver || scoreRecordedForCurrentPuzzle) {
       return;
@@ -847,7 +985,8 @@ export default function SudokuGame() {
       <GameControls
         selectedDifficulty={difficulty}
         onDifficultyChange={handleDifficultyChange}
-        onNewGame={() => initializeGame(difficulty)}
+        onNewGame={handleNewGameClick}
+        onRestart={handleRestartClick}
         onCheckSolution={checkSolution}
         onHint={handleHint}
         onUndo={handleUndo}
@@ -863,6 +1002,19 @@ export default function SudokuGame() {
         onThemeToggle={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
         message={message}
         messageColor={messageColor}
+      />
+      <ConfirmationModal
+        open={Boolean(confirmModal && confirmModal.open)}
+        title={confirmModal?.type === 'restart' ? 'Restart Puzzle' : 'Start New Game'}
+        message={
+          confirmModal?.type === 'restart'
+            ? 'Restart this puzzle? Your current progress will be lost.'
+            : 'Start a new game? Your current progress will be lost.'
+        }
+        confirmLabel={confirmModal?.type === 'restart' ? 'Restart' : 'New Game'}
+        cancelLabel="Cancel"
+        onConfirm={handleConfirmProceed}
+        onCancel={handleConfirmCancel}
       />
       <Scoreboard scores={scores} />
     </div>
