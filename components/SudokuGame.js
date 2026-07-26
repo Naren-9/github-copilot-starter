@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import SudokuBoard from './SudokuBoard';
 import GameControls from './GameControls';
+import Timer from './Timer';
 import { createEmptyBoard, generatePuzzle, deepCopy, EMPTY } from '../lib/sudoku.mjs';
 
 const DEFAULT_DIFFICULTY = 'medium';
@@ -17,6 +18,8 @@ export default function SudokuGame() {
   const [hinted, setHinted] = useState(createBooleanGrid());
   const [incorrectCells, setIncorrectCells] = useState([]);
   const [conflictCells, setConflictCells] = useState([]);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [message, setMessage] = useState('');
   const [messageColor, setMessageColor] = useState('#d32f2f');
   const [difficulty, setDifficulty] = useState(DEFAULT_DIFFICULTY);
@@ -111,6 +114,8 @@ export default function SudokuGame() {
     setHinted(createBooleanGrid());
     setConflictCells([]);
     setIncorrectCells([]);
+    setElapsedSeconds(0);
+    setIsTimerRunning(true);
     setMessage('');
     setMessageColor('#d32f2f');
   };
@@ -124,6 +129,8 @@ export default function SudokuGame() {
       setHinted(createBooleanGrid());
       setConflictCells([]);
       setIncorrectCells([]);
+      setElapsedSeconds(0);
+      setIsTimerRunning(true);
       setMessage('');
       setMessageColor('#d32f2f');
       setDifficulty(DEFAULT_DIFFICULTY);
@@ -131,6 +138,18 @@ export default function SudokuGame() {
 
     startGame();
   }, []);
+
+  useEffect(() => {
+    if (!isTimerRunning) {
+      return undefined;
+    }
+
+    const intervalId = setInterval(() => {
+      setElapsedSeconds((seconds) => seconds + 1);
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [isTimerRunning]);
 
   const handleCellChange = (row, col, value) => {
     const cleaned = value.replace(/[^1-9]/g, '').slice(0, 1);
@@ -197,6 +216,7 @@ export default function SudokuGame() {
     setIncorrectCells(incorrect);
 
     if (correct) {
+      setIsTimerRunning(false);
       setMessageColor('#388e3c');
       setMessage('Congratulations! You solved it!');
     } else {
@@ -207,6 +227,7 @@ export default function SudokuGame() {
 
   return (
     <div>
+      <Timer elapsedSeconds={elapsedSeconds} />
       <SudokuBoard
         board={board}
         prefilled={prefilled}
