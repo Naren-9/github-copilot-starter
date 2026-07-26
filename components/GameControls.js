@@ -2,10 +2,29 @@
 
 import styles from './GameControls.module.css';
 
-// Keeps the action buttons and status message separate from the board state logic.
-export default function GameControls({ onNewGame, onCheckSolution, message, messageColor }) {
+// Keeps the action buttons, difficulty selector, and status message separate from the board state logic.
+export default function GameControls({
+  selectedDifficulty,
+  onDifficultyChange,
+  onNewGame,
+  onCheckSolution,
+  message,
+  messageColor,
+}) {
   return (
     <div className={styles.controls}>
+      <label className={styles.label}>
+        Difficulty
+        <select
+          className={styles.select}
+          value={selectedDifficulty}
+          onChange={(event) => onDifficultyChange(event.target.value)}
+        >
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+      </label>
       <button type="button" className={styles.button} onClick={onNewGame}>
         New Game
       </button>
