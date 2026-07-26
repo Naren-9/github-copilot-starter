@@ -89,6 +89,8 @@ export default function SudokuGame() {
   const [notes, setNotes] = useState(createEmptyNotes());
   const [mistakes, setMistakes] = useState(0);
   const [isGameOver, setIsGameOver] = useState(false);
+  const [undoHistory, setUndoHistory] = useState([]);
+  const [redoHistory, setRedoHistory] = useState([]);
 
   const isReadOnlyCell = (row, col, prefilledGrid, hintedGrid) => prefilledGrid[row][col] || hintedGrid[row][col];
 
@@ -172,6 +174,32 @@ export default function SudokuGame() {
     return Array.from(conflictSet);
   };
 
+  const recordAction = ({ boardSnapshot, notesSnapshot, mistakesSnapshot, row, col, value, notesCell }) => {
+    setUndoHistory((currentHistory) => [
+      ...currentHistory,
+      {
+        board: boardSnapshot,
+        notes: notesSnapshot,
+        mistakes: mistakesSnapshot,
+        row,
+        col,
+        value,
+        notesCell,
+      },
+    ]);
+    // A new edit clears redo history because redo is only valid for undone actions.
+    setRedoHistory([]);
+  };
+
+  const restoreFromHistory = (historyEntry) => {
+    setBoard(historyEntry.board);
+    setNotes(historyEntry.notes);
+    setMistakes(historyEntry.mistakes);
+    setConflictCells(findConflictCells(historyEntry.board, prefilled, hinted));
+    setIncorrectCells([]);
+    setMessage('');
+  };
+
   const clearNotesForCell = (currentNotes, row, col) => {
     const nextNotes = currentNotes.map((rowValues) => rowValues.map((noteValues) => noteValues.slice()));
     nextNotes[row][col] = [];
@@ -248,6 +276,8 @@ export default function SudokuGame() {
     setIncorrectCells([]);
     setNotes(createEmptyNotes());
     setNotesMode(false);
+    setUndoHistory([]);
+    setRedoHistory([]);
     setElapsedSeconds(0);
     setIsTimerRunning(true);
     setIsPaused(false);
@@ -272,6 +302,8 @@ export default function SudokuGame() {
       setIncorrectCells([]);
       setNotes(createEmptyNotes());
       setNotesMode(false);
+      setUndoHistory([]);
+      setRedoHistory([]);
       setElapsedSeconds(0);
       setIsTimerRunning(true);
       setIsPaused(false);
@@ -322,6 +354,42 @@ export default function SudokuGame() {
     }
   };
 
+  const handleUndo = () => {
+    if (isPaused || isGameOver || scoreRecordedForCurrentPuzzle || undoHistory.length === 0) {
+      return;
+    }
+
+    const previousHistory = undoHistory[undoHistory.length - 1];
+    const nextUndoHistory = undoHistory.slice(0, -1);
+    const currentSnapshot = {
+      board: deepCopy(board),
+      notes: notes.map((rowValues) => rowValues.map((noteValues) => noteValues.slice())),
+      mistakes,
+    };
+
+    setUndoHistory(nextUndoHistory);
+    setRedoHistory((history) => [...history, currentSnapshot]);
+    restoreFromHistory(previousHistory);
+  };
+
+  const handleRedo = () => {
+    if (isPaused || isGameOver || scoreRecordedForCurrentPuzzle || redoHistory.length === 0) {
+      return;
+    }
+
+    const lastRedo = redoHistory[redoHistory.length - 1];
+    const nextRedoHistory = redoHistory.slice(0, -1);
+    const currentSnapshot = {
+      board: deepCopy(board),
+      notes: notes.map((rowValues) => rowValues.map((noteValues) => noteValues.slice())),
+      mistakes,
+    };
+
+    setRedoHistory(nextRedoHistory);
+    setUndoHistory((history) => [...history, currentSnapshot]);
+    restoreFromHistory(lastRedo);
+  };
+
   const handleCellChange = (row, col, value) => {
     if (isPaused || isGameOver || scoreRecordedForCurrentPuzzle) {
       return;
@@ -333,6 +401,16 @@ export default function SudokuGame() {
         return;
       }
 
+      recordAction({
+        boardSnapshot: deepCopy(board),
+        notesSnapshot: notes.map((rowValues) => rowValues.map((noteValues) => noteValues.slice())),
+        mistakesSnapshot: mistakes,
+        row,
+        col,
+        value: board[row][col],
+        notesCell: notes[row][col],
+      });
+
       setNotes((currentNotes) => toggleNoteForCell(currentNotes, row, col, candidate));
       setMessage('');
       return;
@@ -342,6 +420,21 @@ export default function SudokuGame() {
     const nextBoard = deepCopy(board);
     const previousValue = board[row][col];
     const nextValue = cleaned ? Number(cleaned) : EMPTY;
+
+    if (nextValue === previousValue) {
+      return;
+    }
+
+    recordAction({
+      boardSnapshot: deepCopy(board),
+      notesSnapshot: notes.map((rowValues) => rowValues.map((noteValues) => noteValues.slice())),
+      mistakesSnapshot: mistakes,
+      row,
+      col,
+      value: previousValue,
+      notesCell: notes[row][col],
+    });
+
     nextBoard[row][col] = nextValue;
 
     const isNewMistake =
@@ -480,6 +573,10 @@ export default function SudokuGame() {
         onNewGame={() => initializeGame(difficulty)}
         onCheckSolution={checkSolution}
         onHint={handleHint}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        canUndo={undoHistory.length > 0}
+        canRedo={redoHistory.length > 0}
         notesMode={notesMode}
         onNotesToggle={handleNotesToggle}
         isPaused={isPaused}

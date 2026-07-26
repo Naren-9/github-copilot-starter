@@ -9,6 +9,10 @@ export default function GameControls({
   onNewGame,
   onCheckSolution,
   onHint,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
   notesMode,
   onNotesToggle,
   isPaused,
@@ -35,6 +39,12 @@ export default function GameControls({
       </label>
       <button type="button" className={styles.button} onClick={onNewGame}>
         New Game
+      </button>
+      <button type="button" className={styles.button} onClick={onUndo} disabled={!canUndo || isPaused || isGameOver}>
+        Undo
+      </button>
+      <button type="button" className={styles.button} onClick={onRedo} disabled={!canRedo || isPaused || isGameOver}>
+        Redo
       </button>
       <button type="button" className={styles.button} onClick={onHint} disabled={isPaused || isGameOver}>
         Hint
