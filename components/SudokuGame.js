@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import SudokuBoard from './SudokuBoard';
 import GameControls from './GameControls';
 import Timer from './Timer';
@@ -91,6 +91,8 @@ export default function SudokuGame() {
   const [isGameOver, setIsGameOver] = useState(false);
   const [undoHistory, setUndoHistory] = useState([]);
   const [redoHistory, setRedoHistory] = useState([]);
+  const [selectedCell, setSelectedCell] = useState(null);
+  const boardRef = useRef(null);
 
   const isReadOnlyCell = (row, col, prefilledGrid, hintedGrid) => prefilledGrid[row][col] || hintedGrid[row][col];
 
@@ -266,6 +268,81 @@ export default function SudokuGame() {
     return nextNotes;
   };
 
+  const isRelatedCell = (row, col) => {
+    if (!selectedCell) {
+      return false;
+    }
+
+    const sameRow = selectedCell.row === row;
+    const sameCol = selectedCell.col === col;
+    const sameBox =
+      Math.floor(selectedCell.row / 3) === Math.floor(row / 3) &&
+      Math.floor(selectedCell.col / 3) === Math.floor(col / 3);
+
+    return sameRow || sameCol || sameBox;
+  };
+
+  const selectedValue = selectedCell ? board[selectedCell.row][selectedCell.col] : null;
+  const selectedNumber = selectedValue && selectedValue !== EMPTY ? selectedValue : null;
+  const isSameNumberCell = (row, col) => selectedNumber !== null && board[row][col] === selectedNumber;
+
+  const handleCellSelect = (row, col) => {
+    setSelectedCell({ row, col });
+    if (boardRef.current) {
+      boardRef.current.focus();
+    }
+  };
+
+  const moveSelectedCell = (deltaRow, deltaCol) => {
+    if (!selectedCell) {
+      return;
+    }
+
+    const nextRow = Math.min(8, Math.max(0, selectedCell.row + deltaRow));
+    const nextCol = Math.min(8, Math.max(0, selectedCell.col + deltaCol));
+    setSelectedCell({ row: nextRow, col: nextCol });
+  };
+
+  const handleBoardKeyDown = (event) => {
+    if (!selectedCell || isPaused || isGameOver || scoreRecordedForCurrentPuzzle) {
+      return;
+    }
+
+    const { row, col } = selectedCell;
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      moveSelectedCell(-1, 0);
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      moveSelectedCell(1, 0);
+      return;
+    }
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      moveSelectedCell(0, -1);
+      return;
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      moveSelectedCell(0, 1);
+      return;
+    }
+
+    if (/^[1-9]$/.test(event.key)) {
+      event.preventDefault();
+      handleCellChange(row, col, event.key);
+      return;
+    }
+
+    if (event.key === 'Backspace' || event.key === 'Delete' || event.key === '0') {
+      event.preventDefault();
+      handleCellChange(row, col, '');
+    }
+  };
+
   const initializeGame = (selectedDifficulty = difficulty) => {
     const { puzzle, solution: solvedBoard, prefilled: prefilledCells } = generatePuzzle(selectedDifficulty);
     setBoard(deepCopy(puzzle));
@@ -276,6 +353,7 @@ export default function SudokuGame() {
     setIncorrectCells([]);
     setNotes(createEmptyNotes());
     setNotesMode(false);
+    setSelectedCell(null);
     setUndoHistory([]);
     setRedoHistory([]);
     setElapsedSeconds(0);
@@ -302,6 +380,7 @@ export default function SudokuGame() {
       setIncorrectCells([]);
       setNotes(createEmptyNotes());
       setNotesMode(false);
+      setSelectedCell(null);
       setUndoHistory([]);
       setRedoHistory([]);
       setElapsedSeconds(0);
@@ -395,7 +474,11 @@ export default function SudokuGame() {
       return;
     }
 
-    if (notesMode && !isReadOnlyCell(row, col, prefilled, hinted) && board[row][col] === EMPTY) {
+    if (isReadOnlyCell(row, col, prefilled, hinted)) {
+      return;
+    }
+
+    if (notesMode && board[row][col] === EMPTY) {
       const candidate = Number(value.replace(/[^1-9]/g, '').slice(0, 1));
       if (!candidate) {
         return;
@@ -563,6 +646,12 @@ export default function SudokuGame() {
         notes={notes}
         incorrectCells={incorrectCells}
         conflictCells={conflictCells}
+        selectedCell={selectedCell}
+        onCellSelect={handleCellSelect}
+        isRelatedCell={isRelatedCell}
+        isSameNumberCell={isSameNumberCell}
+        boardRef={boardRef}
+        onBoardKeyDown={handleBoardKeyDown}
         isPaused={isPaused}
         isGameOver={isGameOver}
         onCellChange={handleCellChange}

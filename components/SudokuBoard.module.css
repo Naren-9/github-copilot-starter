@@ -70,6 +70,19 @@
   background: #e0f7fa;
 }
 
+.selected {
+  background: #b3e5fc;
+  border: 2px solid #0288d1;
+}
+
+.related {
+  background: #f1f8e9;
+}
+
+.sameNumber {
+  background: #fff9c4;
+}
+
 .prefilled {
   background: #e0e0e0;
   font-weight: bold;
@@ -104,6 +117,21 @@
 
 :global(body.dark-theme) .cell:focus {
   background: #263238;
+}
+
+:global(body.dark-theme) .selected {
+  background: #1565c0;
+  border: 2px solid #82b1ff;
+  color: #fff;
+}
+
+:global(body.dark-theme) .related {
+  background: #263a2b;
+}
+
+:global(body.dark-theme) .sameNumber {
+  background: #4a4300;
+  color: #fff;
 }
 
 :global(body.dark-theme) .prefilled {
