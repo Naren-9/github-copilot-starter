@@ -1,0 +1,101 @@
+.scoreboardSection {
+  width: min(100%, 700px);
+  margin: 24px auto 0;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #dcdcdc;
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.heading {
+  margin: 0 0 14px;
+  font-size: 1.1rem;
+  color: #111;
+  text-align: center;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.scoreboard {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 360px;
+}
+
+.scoreboard th,
+.scoreboard td {
+  padding: 12px 10px;
+  text-align: left;
+  border-bottom: 1px solid #e3e3e3;
+  font-size: 0.96rem;
+}
+
+.scoreboard th {
+  color: #555;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.scoreboard tbody tr:nth-child(odd) {
+  background: #f8f8f8;
+}
+
+.scoreboard tbody tr:hover {
+  background: #e3f2fd;
+}
+
+.empty {
+  margin: 0;
+  padding: 10px 0;
+  color: #555;
+  text-align: center;
+}
+
+@media (max-width: 520px) {
+  .scoreboardSection {
+    padding: 12px;
+  }
+
+  .scoreboard th,
+  .scoreboard td {
+    padding: 10px 8px;
+    font-size: 0.92rem;
+  }
+}
+
+:global(body.dark-theme) .scoreboardSection {
+  background: #151515;
+  border-color: #333;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+:global(body.dark-theme) .heading {
+  color: #f2f2f2;
+}
+
+:global(body.dark-theme) .scoreboard th,
+:global(body.dark-theme) .scoreboard td {
+  border-color: #2b2b2b;
+  color: #e8e8e8;
+}
+
+:global(body.dark-theme) .scoreboard tbody tr:nth-child(odd) {
+  background: #1d1d1d;
+}
+
+:global(body.dark-theme) .scoreboard tbody tr {
+  background: #151515;
+}
+
+:global(body.dark-theme) .scoreboard tbody tr:hover {
+  background: #263238;
+}
+
+:global(body.dark-theme) .empty {
+  color: #ccc;
+}

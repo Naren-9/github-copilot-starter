@@ -4,9 +4,65 @@ import { useEffect, useState } from 'react';
 import SudokuBoard from './SudokuBoard';
 import GameControls from './GameControls';
 import Timer from './Timer';
+import Scoreboard from './Scoreboard';
 import { createEmptyBoard, generatePuzzle, deepCopy, EMPTY } from '../lib/sudoku.mjs';
 
 const DEFAULT_DIFFICULTY = 'medium';
+const SCORE_STORAGE_KEY = 'sudokuTopScores';
+const MAX_SCORE_ENTRIES = 10;
+const DIFFICULTY_LABELS = {
+  easy: 'Easy',
+  medium: 'Medium',
+  hard: 'Hard',
+};
+const DIFFICULTY_RANK = {
+  hard: 1,
+  medium: 2,
+  easy: 3,
+};
+
+const loadSavedScores = () => {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const saved = window.localStorage.getItem(SCORE_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch (error) {
+    console.error('Failed to load saved scores', error);
+    return [];
+  }
+};
+
+const saveScoresToStorage = (scores) => {
+  try {
+    window.localStorage.setItem(SCORE_STORAGE_KEY, JSON.stringify(scores));
+  } catch (error) {
+    console.error('Failed to save scores', error);
+  }
+};
+
+const compareScores = (a, b) => {
+  if (DIFFICULTY_RANK[a.difficulty] !== DIFFICULTY_RANK[b.difficulty]) {
+    return DIFFICULTY_RANK[a.difficulty] - DIFFICULTY_RANK[b.difficulty];
+  }
+
+  return a.completionTime - b.completionTime;
+};
+
+const sortScores = (scores) => [...scores].sort(compareScores);
+
+const buildScoreEntry = (completionTime, difficulty) => {
+  const dateCompleted = new Date().toISOString();
+  return {
+    id: `${difficulty}-${completionTime}-${dateCompleted}`,
+    completionTime,
+    difficulty,
+    difficultyLabel: DIFFICULTY_LABELS[difficulty] || difficulty,
+    dateCompleted,
+  };
+};
 
 // Stateful container that owns the Sudoku board, difficulty, solution, hint state, and game feedback.
 export default function SudokuGame() {
@@ -24,6 +80,8 @@ export default function SudokuGame() {
   const [message, setMessage] = useState('');
   const [messageColor, setMessageColor] = useState('#d32f2f');
   const [difficulty, setDifficulty] = useState(DEFAULT_DIFFICULTY);
+  const [scores, setScores] = useState([]);
+  const [scoreRecordedForCurrentPuzzle, setScoreRecordedForCurrentPuzzle] = useState(false);
 
   const isReadOnlyCell = (row, col, prefilledGrid, hintedGrid) => prefilledGrid[row][col] || hintedGrid[row][col];
 
@@ -119,9 +177,13 @@ export default function SudokuGame() {
     setIsTimerRunning(true);
     setMessage('');
     setMessageColor('#d32f2f');
+    setScoreRecordedForCurrentPuzzle(false);
   };
 
   useEffect(() => {
+    const storedScores = loadSavedScores();
+    setScores(sortScores(storedScores));
+
     const startGame = () => {
       const { puzzle, solution: solvedBoard, prefilled: prefilledCells } = generatePuzzle(DEFAULT_DIFFICULTY);
       setBoard(deepCopy(puzzle));
@@ -135,6 +197,7 @@ export default function SudokuGame() {
       setMessage('');
       setMessageColor('#d32f2f');
       setDifficulty(DEFAULT_DIFFICULTY);
+      setScoreRecordedForCurrentPuzzle(false);
     };
 
     startGame();
@@ -225,6 +288,14 @@ export default function SudokuGame() {
       setIsTimerRunning(false);
       setMessageColor('#388e3c');
       setMessage('Congratulations! You solved it!');
+
+      if (!scoreRecordedForCurrentPuzzle) {
+        const newScore = buildScoreEntry(elapsedSeconds, difficulty);
+        const updatedScores = sortScores([...scores, newScore]).slice(0, MAX_SCORE_ENTRIES);
+        setScores(updatedScores);
+        saveScoresToStorage(updatedScores);
+        setScoreRecordedForCurrentPuzzle(true);
+      }
     } else {
       setMessageColor('#d32f2f');
       setMessage('Some cells are incorrect.');
@@ -253,6 +324,7 @@ export default function SudokuGame() {
         message={message}
         messageColor={messageColor}
       />
+      <Scoreboard scores={scores} />
     </div>
   );
 }
