@@ -20,6 +20,7 @@ export default function SudokuGame() {
   const [conflictCells, setConflictCells] = useState([]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [theme, setTheme] = useState('light');
   const [message, setMessage] = useState('');
   const [messageColor, setMessageColor] = useState('#d32f2f');
   const [difficulty, setDifficulty] = useState(DEFAULT_DIFFICULTY);
@@ -140,6 +141,11 @@ export default function SudokuGame() {
   }, []);
 
   useEffect(() => {
+    document.body.classList.toggle('dark-theme', theme === 'dark');
+    document.body.classList.toggle('light-theme', theme === 'light');
+  }, [theme]);
+
+  useEffect(() => {
     if (!isTimerRunning) {
       return undefined;
     }
@@ -242,6 +248,8 @@ export default function SudokuGame() {
         onNewGame={() => initializeGame(difficulty)}
         onCheckSolution={checkSolution}
         onHint={handleHint}
+        theme={theme}
+        onThemeToggle={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
         message={message}
         messageColor={messageColor}
       />

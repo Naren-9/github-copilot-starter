@@ -3,6 +3,7 @@
   border: 4px solid #333;
   background: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
 
 .row {
@@ -17,7 +18,8 @@
   font-size: 20px;
   outline: none;
   background: #fafafa;
-  transition: background 0.2s;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  color: #111;
 }
 
 .cell:focus {
@@ -44,10 +46,55 @@
   border: 2px solid #d32f2f;
 }
 
+:global(body.dark-theme) .board {
+  border-color: #555;
+  background: #121212;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+}
+
+:global(body.dark-theme) .cell {
+  border-color: #444;
+  background: #1d1d1d;
+  color: #f5f5f5;
+}
+
+:global(body.dark-theme) .cell:focus {
+  background: #263238;
+}
+
+:global(body.dark-theme) .prefilled {
+  background: #2b2b2b;
+  color: #e0e0e0;
+}
+
+:global(body.dark-theme) .incorrect {
+  background: #8d2020;
+  color: #fff;
+}
+
+:global(body.dark-theme) .hinted {
+  background: #1b5e20;
+  color: #e8f5e9;
+}
+
+:global(body.dark-theme) .conflict {
+  background: #4d0f0f;
+  border: 2px solid #ff8a80;
+  color: #fff;
+}
+
 .row :nth-child(3n) {
   border-right: 3px solid #333;
 }
 
 .row:nth-child(3n) {
   border-bottom: 3px solid #333;
+}
+
+:global(body.dark-theme) .row :nth-child(3n) {
+  border-right: 3px solid #777;
+}
+
+:global(body.dark-theme) .row:nth-child(3n) {
+  border-bottom: 3px solid #777;
 }

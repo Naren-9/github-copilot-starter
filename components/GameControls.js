@@ -9,6 +9,8 @@ export default function GameControls({
   onNewGame,
   onCheckSolution,
   onHint,
+  theme,
+  onThemeToggle,
   message,
   messageColor,
 }) {
@@ -34,6 +36,9 @@ export default function GameControls({
       </button>
       <button type="button" className={styles.button} onClick={onCheckSolution}>
         Check Solution
+      </button>
+      <button type="button" className={styles.button} onClick={onThemeToggle}>
+        {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
       </button>
       <span className={styles.message} style={{ color: messageColor }}>
         {message}
