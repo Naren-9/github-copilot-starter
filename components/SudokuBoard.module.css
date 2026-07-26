@@ -1,3 +1,8 @@
+.boardWrapper {
+  position: relative;
+  display: inline-block;
+}
+
 .board {
   display: inline-block;
   border: 4px solid #333;
@@ -97,4 +102,26 @@
 
 :global(body.dark-theme) .row:nth-child(3n) {
   border-bottom: 3px solid #777;
+}
+
+.pausedOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  color: #111;
+  font-size: 1.5rem;
+  font-weight: 700;
+  border-radius: 10px;
+  text-transform: uppercase;
+}
+
+:global(body.dark-theme) .pausedOverlay {
+  background: rgba(18, 18, 18, 0.95);
+  color: #fff;
 }

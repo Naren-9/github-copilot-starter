@@ -82,6 +82,7 @@ export default function SudokuGame() {
   const [difficulty, setDifficulty] = useState(DEFAULT_DIFFICULTY);
   const [scores, setScores] = useState([]);
   const [scoreRecordedForCurrentPuzzle, setScoreRecordedForCurrentPuzzle] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   const isReadOnlyCell = (row, col, prefilledGrid, hintedGrid) => prefilledGrid[row][col] || hintedGrid[row][col];
 
@@ -175,6 +176,7 @@ export default function SudokuGame() {
     setIncorrectCells([]);
     setElapsedSeconds(0);
     setIsTimerRunning(true);
+    setIsPaused(false);
     setMessage('');
     setMessageColor('#d32f2f');
     setScoreRecordedForCurrentPuzzle(false);
@@ -194,6 +196,7 @@ export default function SudokuGame() {
       setIncorrectCells([]);
       setElapsedSeconds(0);
       setIsTimerRunning(true);
+      setIsPaused(false);
       setMessage('');
       setMessageColor('#d32f2f');
       setDifficulty(DEFAULT_DIFFICULTY);
@@ -219,6 +222,23 @@ export default function SudokuGame() {
 
     return () => clearInterval(intervalId);
   }, [isTimerRunning]);
+
+  const handlePauseToggle = () => {
+    if (scoreRecordedForCurrentPuzzle) {
+      setIsPaused(false);
+      return;
+    }
+
+    if (isPaused) {
+      setIsPaused(false);
+      if (!scoreRecordedForCurrentPuzzle) {
+        setIsTimerRunning(true);
+      }
+    } else {
+      setIsPaused(true);
+      setIsTimerRunning(false);
+    }
+  };
 
   const handleCellChange = (row, col, value) => {
     const cleaned = value.replace(/[^1-9]/g, '').slice(0, 1);
@@ -304,13 +324,14 @@ export default function SudokuGame() {
 
   return (
     <div>
-      <Timer elapsedSeconds={elapsedSeconds} />
+      <Timer elapsedSeconds={elapsedSeconds} isPaused={isPaused} />
       <SudokuBoard
         board={board}
         prefilled={prefilled}
         hinted={hinted}
         incorrectCells={incorrectCells}
         conflictCells={conflictCells}
+        isPaused={isPaused}
         onCellChange={handleCellChange}
       />
       <GameControls
@@ -319,6 +340,8 @@ export default function SudokuGame() {
         onNewGame={() => initializeGame(difficulty)}
         onCheckSolution={checkSolution}
         onHint={handleHint}
+        isPaused={isPaused}
+        onPauseToggle={handlePauseToggle}
         theme={theme}
         onThemeToggle={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
         message={message}
