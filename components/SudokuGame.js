@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import SudokuBoard from './SudokuBoard';
 import GameControls from './GameControls';
 import Timer from './Timer';
@@ -9,6 +9,8 @@ import { createEmptyBoard, generatePuzzle, deepCopy, EMPTY } from '../lib/sudoku
 
 const DEFAULT_DIFFICULTY = 'medium';
 const SCORE_STORAGE_KEY = 'sudokuTopScores';
+const ACTIVE_GAME_STORAGE_KEY = 'sudokuActiveGame';
+const SAVE_VERSION = 1;
 const MAX_SCORE_ENTRIES = 10;
 const MAX_MISTAKES = 3;
 const DIFFICULTY_LABELS = {
@@ -41,6 +43,91 @@ const saveScoresToStorage = (scores) => {
     window.localStorage.setItem(SCORE_STORAGE_KEY, JSON.stringify(scores));
   } catch (error) {
     console.error('Failed to save scores', error);
+  }
+};
+
+/*
+Save format (version 1):
+{
+  version: 1,
+  board: number[9][9],
+  solution: number[9][9],
+  prefilled: boolean[9][9],
+  hinted: boolean[9][9],
+  notes: number[][][9][9],
+  difficulty: string,
+  elapsedSeconds: number,
+  mistakes: number,
+  undoHistory: Array<{board,notes,mistakes,row,col,value,notesCell}>,
+  redoHistory: Array<...>,
+  notesMode: boolean,
+  isPaused: boolean,
+  selectedCell: {row,col} | null
+}
+
+We version the saved object so future changes can be ignored safely.
+*/
+
+const loadActiveGameFromStorage = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(ACTIVE_GAME_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.version !== SAVE_VERSION) {
+      // Unsupported or missing version; remove and ignore
+      window.localStorage.removeItem(ACTIVE_GAME_STORAGE_KEY);
+      return null;
+    }
+
+    // Basic validation of required fields
+    const okArrayGrid = (g, check) => Array.isArray(g) && g.length === 9 && g.every((r) => Array.isArray(r) && r.length === 9 && r.every(check));
+    if (!okArrayGrid(parsed.board, (v) => typeof v === 'number')) return null;
+    if (!okArrayGrid(parsed.solution, (v) => typeof v === 'number')) return null;
+    if (!okArrayGrid(parsed.prefilled, (v) => typeof v === 'boolean')) return null;
+    if (!okArrayGrid(parsed.hinted, (v) => typeof v === 'boolean')) return null;
+    if (!Array.isArray(parsed.notes) || parsed.notes.length !== 9) return null;
+
+    // notes deep validation (each cell array of numbers)
+    for (let r = 0; r < 9; r += 1) {
+      if (!Array.isArray(parsed.notes[r]) || parsed.notes[r].length !== 9) return null;
+      for (let c = 0; c < 9; c += 1) {
+        if (!Array.isArray(parsed.notes[r][c])) return null;
+        if (!parsed.notes[r][c].every((n) => typeof n === 'number')) return null;
+      }
+    }
+
+    // undo/redo optional but if present must be arrays
+    if (parsed.undoHistory && !Array.isArray(parsed.undoHistory)) return null;
+    if (parsed.redoHistory && !Array.isArray(parsed.redoHistory)) return null;
+
+    return parsed;
+  } catch (error) {
+    console.error('Failed to parse saved active game', error);
+    try {
+      window.localStorage.removeItem(ACTIVE_GAME_STORAGE_KEY);
+    } catch (e) {
+      // ignore
+    }
+    return null;
+  }
+};
+
+const saveActiveGameToStorage = (payload) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(ACTIVE_GAME_STORAGE_KEY, JSON.stringify({ version: SAVE_VERSION, ...payload }));
+  } catch (error) {
+    console.error('Failed to save active game', error);
+  }
+};
+
+const removeActiveGameFromStorage = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(ACTIVE_GAME_STORAGE_KEY);
+  } catch (error) {
+    console.error('Failed to remove active game', error);
   }
 };
 
@@ -93,12 +180,43 @@ export default function SudokuGame() {
   const [redoHistory, setRedoHistory] = useState([]);
   const [selectedCell, setSelectedCell] = useState(null);
   const boardRef = useRef(null);
+  const saveTimeoutRef = useRef(null);
+
+  const buildActiveGamePayload = () => ({
+    board,
+    solution,
+    prefilled,
+    hinted,
+    notes,
+    difficulty,
+    elapsedSeconds,
+    mistakes,
+    undoHistory,
+    redoHistory,
+    notesMode,
+    isPaused,
+    selectedCell,
+  });
+
+  const scheduleSaveActiveGame = () => {
+    // debounce writes to avoid saving too often (avoid saving every timer tick)
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      try {
+        saveActiveGameToStorage(buildActiveGamePayload());
+      } catch (err) {
+        console.error('Error scheduling save', err);
+      }
+    }, 600);
+  };
 
   const isReadOnlyCell = (row, col, prefilledGrid, hintedGrid) => prefilledGrid[row][col] || hintedGrid[row][col];
 
   // Determine which user-entered cells conflict in row, column, or 3x3 box.
   // Prefilled and hinted cells are excluded from conflict styling.
-  const findConflictCells = (boardToCheck, prefilledGrid, hintedGrid) => {
+  const findConflictCells = useCallback((boardToCheck, prefilledGrid, hintedGrid) => {
     const conflictSet = new Set();
 
     const markConflict = (row, col) => {
@@ -174,7 +292,7 @@ export default function SudokuGame() {
     }
 
     return Array.from(conflictSet);
-  };
+  }, []);
 
   const recordAction = ({ boardSnapshot, notesSnapshot, mistakesSnapshot, row, col, value, notesCell }) => {
     setUndoHistory((currentHistory) => [
@@ -364,38 +482,84 @@ export default function SudokuGame() {
     setMessage('');
     setMessageColor('#d32f2f');
     setScoreRecordedForCurrentPuzzle(false);
+
+    // Persist the newly initialized game replacing any prior saved game
+    try {
+      saveActiveGameToStorage({
+        board: deepCopy(puzzle),
+        solution: deepCopy(solvedBoard),
+        prefilled: prefilledCells,
+        hinted: createBooleanGrid(),
+        notes: createEmptyNotes(),
+        difficulty: selectedDifficulty,
+        elapsedSeconds: 0,
+        mistakes: 0,
+        undoHistory: [],
+        redoHistory: [],
+        notesMode: false,
+        isPaused: false,
+        selectedCell: null,
+      });
+    } catch (err) {
+      // ignore storage errors
+    }
   };
 
+  // Attempt to restore game on first client render.
   useEffect(() => {
     const storedScores = loadSavedScores();
     setScores(sortScores(storedScores));
-
-    const startGame = () => {
-      const { puzzle, solution: solvedBoard, prefilled: prefilledCells } = generatePuzzle(DEFAULT_DIFFICULTY);
-      setBoard(deepCopy(puzzle));
-      setSolution(deepCopy(solvedBoard));
-      setPrefilled(prefilledCells);
-      setHinted(createBooleanGrid());
-      setConflictCells([]);
+    // Try to restore an active unfinished game from storage. If none found, start a new puzzle.
+    const saved = loadActiveGameFromStorage();
+    if (saved) {
+      // Restore full game state from saved payload
+      setBoard(saved.board);
+      setSolution(saved.solution);
+      setPrefilled(saved.prefilled);
+      setHinted(saved.hinted);
+      setNotes(saved.notes);
+      setDifficulty(saved.difficulty || DEFAULT_DIFFICULTY);
+      setElapsedSeconds(saved.elapsedSeconds || 0);
+      setMistakes(saved.mistakes || 0);
+      setUndoHistory(saved.undoHistory || []);
+      setRedoHistory(saved.redoHistory || []);
+      setNotesMode(Boolean(saved.notesMode));
+      setIsPaused(Boolean(saved.isPaused));
+      setIsTimerRunning(!saved.isPaused);
+      setSelectedCell(saved.selectedCell || null);
+      setConflictCells(findConflictCells(saved.board, saved.prefilled, saved.hinted));
       setIncorrectCells([]);
-      setNotes(createEmptyNotes());
-      setNotesMode(false);
-      setSelectedCell(null);
-      setUndoHistory([]);
-      setRedoHistory([]);
-      setElapsedSeconds(0);
-      setIsTimerRunning(true);
-      setIsPaused(false);
-      setMistakes(0);
-      setIsGameOver(false);
       setMessage('');
       setMessageColor('#d32f2f');
-      setDifficulty(DEFAULT_DIFFICULTY);
       setScoreRecordedForCurrentPuzzle(false);
-    };
+    } else {
+      const startGame = () => {
+        const { puzzle, solution: solvedBoard, prefilled: prefilledCells } = generatePuzzle(DEFAULT_DIFFICULTY);
+        setBoard(deepCopy(puzzle));
+        setSolution(deepCopy(solvedBoard));
+        setPrefilled(prefilledCells);
+        setHinted(createBooleanGrid());
+        setConflictCells([]);
+        setIncorrectCells([]);
+        setNotes(createEmptyNotes());
+        setNotesMode(false);
+        setSelectedCell(null);
+        setUndoHistory([]);
+        setRedoHistory([]);
+        setElapsedSeconds(0);
+        setIsTimerRunning(true);
+        setIsPaused(false);
+        setMistakes(0);
+        setIsGameOver(false);
+        setMessage('');
+        setMessageColor('#d32f2f');
+        setDifficulty(DEFAULT_DIFFICULTY);
+        setScoreRecordedForCurrentPuzzle(false);
+      };
 
-    startGame();
-  }, []);
+      startGame();
+    }
+  }, [findConflictCells]);
 
   useEffect(() => {
     document.body.classList.toggle('dark-theme', theme === 'dark');
@@ -413,6 +577,26 @@ export default function SudokuGame() {
 
     return () => clearInterval(intervalId);
   }, [isTimerRunning]);
+
+  // Persist active game when meaningful gameplay state changes, but avoid saving every timer tick.
+  useEffect(() => {
+    // If the game has completed or is recorded to scoreboard, remove any saved unfinished game.
+    if (isGameOver || scoreRecordedForCurrentPuzzle) {
+      removeActiveGameFromStorage();
+      return;
+    }
+
+    // Otherwise schedule a save of the current active game state.
+    scheduleSaveActiveGame();
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board, notes, hinted, mistakes, undoHistory, redoHistory, notesMode, isPaused, difficulty, selectedCell, isGameOver, scoreRecordedForCurrentPuzzle]);
 
   const handleNotesToggle = () => {
     setNotesMode((current) => !current);
@@ -535,6 +719,8 @@ export default function SudokuGame() {
         setIsTimerRunning(false);
         setIsPaused(false);
         setMessage('Game Over. Too many mistakes.');
+        // Clear saved active game on game over
+        removeActiveGameFromStorage();
       } else {
         setMessage('Incorrect entry.');
       }
@@ -624,6 +810,8 @@ export default function SudokuGame() {
         setScores(updatedScores);
         saveScoresToStorage(updatedScores);
         setScoreRecordedForCurrentPuzzle(true);
+        // Remove any saved unfinished game when puzzle is completed
+        removeActiveGameFromStorage();
       }
     } else {
       setMessageColor('#d32f2f');
