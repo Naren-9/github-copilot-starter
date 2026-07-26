@@ -10,6 +10,7 @@ export default function GameControls({
   onCheckSolution,
   onHint,
   isPaused,
+  isGameOver,
   onPauseToggle,
   theme,
   onThemeToggle,
@@ -33,16 +34,16 @@ export default function GameControls({
       <button type="button" className={styles.button} onClick={onNewGame}>
         New Game
       </button>
-      <button type="button" className={styles.button} onClick={onHint} disabled={isPaused}>
+      <button type="button" className={styles.button} onClick={onHint} disabled={isPaused || isGameOver}>
         Hint
       </button>
-      <button type="button" className={styles.button} onClick={onCheckSolution} disabled={isPaused}>
+      <button type="button" className={styles.button} onClick={onCheckSolution} disabled={isPaused || isGameOver}>
         Check Solution
       </button>
       <button type="button" className={styles.button} onClick={onThemeToggle}>
         {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
       </button>
-      <button type="button" className={styles.button} onClick={onPauseToggle}>
+      <button type="button" className={styles.button} onClick={onPauseToggle} disabled={isGameOver}>
         {isPaused ? 'Resume' : 'Pause'}
       </button>
       <span className={styles.message} style={{ color: messageColor }}>

@@ -10,6 +10,7 @@ import { createEmptyBoard, generatePuzzle, deepCopy, EMPTY } from '../lib/sudoku
 const DEFAULT_DIFFICULTY = 'medium';
 const SCORE_STORAGE_KEY = 'sudokuTopScores';
 const MAX_SCORE_ENTRIES = 10;
+const MAX_MISTAKES = 3;
 const DIFFICULTY_LABELS = {
   easy: 'Easy',
   medium: 'Medium',
@@ -83,6 +84,8 @@ export default function SudokuGame() {
   const [scores, setScores] = useState([]);
   const [scoreRecordedForCurrentPuzzle, setScoreRecordedForCurrentPuzzle] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [mistakes, setMistakes] = useState(0);
+  const [isGameOver, setIsGameOver] = useState(false);
 
   const isReadOnlyCell = (row, col, prefilledGrid, hintedGrid) => prefilledGrid[row][col] || hintedGrid[row][col];
 
@@ -177,6 +180,8 @@ export default function SudokuGame() {
     setElapsedSeconds(0);
     setIsTimerRunning(true);
     setIsPaused(false);
+    setMistakes(0);
+    setIsGameOver(false);
     setMessage('');
     setMessageColor('#d32f2f');
     setScoreRecordedForCurrentPuzzle(false);
@@ -197,6 +202,8 @@ export default function SudokuGame() {
       setElapsedSeconds(0);
       setIsTimerRunning(true);
       setIsPaused(false);
+      setMistakes(0);
+      setIsGameOver(false);
       setMessage('');
       setMessageColor('#d32f2f');
       setDifficulty(DEFAULT_DIFFICULTY);
@@ -224,16 +231,13 @@ export default function SudokuGame() {
   }, [isTimerRunning]);
 
   const handlePauseToggle = () => {
-    if (scoreRecordedForCurrentPuzzle) {
-      setIsPaused(false);
+    if (isGameOver || scoreRecordedForCurrentPuzzle) {
       return;
     }
 
     if (isPaused) {
       setIsPaused(false);
-      if (!scoreRecordedForCurrentPuzzle) {
-        setIsTimerRunning(true);
-      }
+      setIsTimerRunning(true);
     } else {
       setIsPaused(true);
       setIsTimerRunning(false);
@@ -241,16 +245,48 @@ export default function SudokuGame() {
   };
 
   const handleCellChange = (row, col, value) => {
+    if (isPaused || isGameOver || scoreRecordedForCurrentPuzzle) {
+      return;
+    }
+
     const cleaned = value.replace(/[^1-9]/g, '').slice(0, 1);
     const nextBoard = deepCopy(board);
-    nextBoard[row][col] = cleaned ? Number(cleaned) : EMPTY;
+    const previousValue = board[row][col];
+    const nextValue = cleaned ? Number(cleaned) : EMPTY;
+    nextBoard[row][col] = nextValue;
+
+    const isNewMistake =
+      cleaned &&
+      nextValue !== solution[row][col] &&
+      nextValue !== previousValue;
+
+    if (isNewMistake) {
+      const nextMistakes = mistakes + 1;
+      setMistakes(nextMistakes);
+      setMessageColor('#d32f2f');
+
+      if (nextMistakes >= MAX_MISTAKES) {
+        setIsGameOver(true);
+        setIsTimerRunning(false);
+        setIsPaused(false);
+        setMessage('Game Over. Too many mistakes.');
+      } else {
+        setMessage('Incorrect entry.');
+      }
+    } else {
+      setMessage('');
+    }
+
     setBoard(nextBoard);
     setConflictCells(findConflictCells(nextBoard, prefilled, hinted));
     setIncorrectCells([]);
-    setMessage('');
   };
 
   const handleHint = () => {
+    if (isPaused || isGameOver || scoreRecordedForCurrentPuzzle) {
+      return;
+    }
+
     const emptyCells = [];
 
     for (let row = 0; row < board.length; row += 1) {
@@ -288,6 +324,10 @@ export default function SudokuGame() {
   };
 
   const checkSolution = () => {
+    if (isPaused || isGameOver || scoreRecordedForCurrentPuzzle) {
+      return;
+    }
+
     const incorrect = [];
     let correct = true;
 
@@ -324,7 +364,12 @@ export default function SudokuGame() {
 
   return (
     <div>
-      <Timer elapsedSeconds={elapsedSeconds} isPaused={isPaused} />
+      <Timer
+        elapsedSeconds={elapsedSeconds}
+        isPaused={isPaused}
+        mistakes={mistakes}
+        maxMistakes={MAX_MISTAKES}
+      />
       <SudokuBoard
         board={board}
         prefilled={prefilled}
@@ -332,6 +377,7 @@ export default function SudokuGame() {
         incorrectCells={incorrectCells}
         conflictCells={conflictCells}
         isPaused={isPaused}
+        isGameOver={isGameOver}
         onCellChange={handleCellChange}
       />
       <GameControls
@@ -341,6 +387,7 @@ export default function SudokuGame() {
         onCheckSolution={checkSolution}
         onHint={handleHint}
         isPaused={isPaused}
+        isGameOver={isGameOver}
         onPauseToggle={handlePauseToggle}
         theme={theme}
         onThemeToggle={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
